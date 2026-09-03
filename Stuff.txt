@@ -1,0 +1,640 @@
+// ==UserScript==
+// @name         Some k12 edit for weather
+// @namespace    Violentmonkey Scripts
+// @icon         https://home.k12.com/favicon.ico
+// @version      1.0.1
+// @match        https://home.k12.com/*
+// @grant        none
+// @license      MIT
+// @author       Veothm (took some css from d016)
+// @description  Custom theme injector, tabbed settings panel with searchable color palettes, dynamic Google Fonts import, temperature unit switcher, and JSON config backup/restore.
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  // Preset Palettes Library
+  const PRESET_PALETTES = [
+    { name: "Nordic Crisp", cardBg: "#212529", cardText: "#f8f9fa", activeBg: "#495057", activeText: "#ffffff", inactiveBg: "#343a40", inactiveText: "#adb5bd" },
+    { name: "Slate & Copper", cardBg: "#2d3748", cardText: "#f7fafc", activeBg: "#c86d51", activeText: "#ffffff", inactiveBg: "#1a202c", inactiveText: "#a0aec0" },
+    { name: "Cyberpunk Neon", cardBg: "#0d0221", cardText: "#00f5d4", activeBg: "#ff007f", activeText: "#ffffff", inactiveBg: "#7b2cbf", inactiveText: "#e0aaff" },
+    { name: "Electric Sunset", cardBg: "#2a0845", cardText: "#ffe600", activeBg: "#ff1e56", activeText: "#ffffff", inactiveBg: "#64147d", inactiveText: "#ffac41" },
+    { name: "Matcha Latte", cardBg: "#2d3023", cardText: "#fefae0", activeBg: "#a3b18a", activeText: "#1a1c14", inactiveBg: "#3a3d2d", inactiveText: "#ccd5ae" },
+    { name: "Cotton Candy", cardBg: "#2b2338", cardText: "#ffc6ff", activeBg: "#ff85a1", activeText: "#ffffff", inactiveBg: "#4a3b5c", inactiveText: "#bdb2ff" },
+    { name: "Forest Canopy", cardBg: "#1b4332", cardText: "#d8f3dc", activeBg: "#52b788", activeText: "#081c15", inactiveBg: "#2d6a4f", inactiveText: "#b7e4c7" },
+    { name: "Terracotta Ridge", cardBg: "#3d1c15", cardText: "#edf6f9", activeBg: "#d96b43", activeText: "#ffffff", inactiveBg: "#5c2a20", inactiveText: "#e29578" },
+    { name: "Midnight & Gold", cardBg: "#0b132b", cardText: "#ffffff", activeBg: "#c5a059", activeText: "#0b132b", inactiveBg: "#1c2541", inactiveText: "#e5c158" },
+    { name: "Enterprise Blue", cardBg: "#0a2540", cardText: "#edf2f7", activeBg: "#4299e1", activeText: "#ffffff", inactiveBg: "#1a365d", inactiveText: "#a0aec0" },
+    { name: "80s Synthwave", cardBg: "#1a102f", cardText: "#00f0ff", activeBg: "#ff007f", activeText: "#ffffff", inactiveBg: "#360568", inactiveText: "#b5179e" },
+    { name: "Bubblegum Pop", cardBg: "#381824", cardText: "#ffc6ff", activeBg: "#ff85a1", activeText: "#ffffff", inactiveBg: "#5c2838", inactiveText: "#ff9bbb" },
+    { name: "Golden Hour", cardBg: "#2b1e3a", cardText: "#f9b26c", activeBg: "#e87a5d", activeText: "#ffffff", inactiveBg: "#6c3558", inactiveText: "#b84a62" },
+    { name: "Ocean Depth", cardBg: "#03045e", cardText: "#caf0f8", activeBg: "#00b4d8", activeText: "#03045e", inactiveBg: "#023e8a", inactiveText: "#90e0ef" },
+  ];
+
+  // Popular Google Fonts for Auto-Suggestions
+  const GOOGLE_FONTS_SUGGESTIONS = [
+    "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Raleway", "PT Sans",
+    "Merriweather", "Noto Sans", "Nunito", "Concert One", "Prompt", "Work Sans",
+    "Poppins", "Inter", "Quicksand", "Karla", "Bebas Neue", "Lobster", "Pacifico",
+    "Dancing Script", "Cinzel", "Abril Fatface", "Comfortaa", "Caveat", "Satisfy",
+    "Shadows Into Light", "Indie Flower", "Permanent Marker", "Fira Code", "JetBrains Mono",
+    "Playfair Display", "Rubik", "Kanit", "Lora", "Fjalla One", "Exo 2", "Ubuntu"
+  ];
+
+  let activeZipCode = localStorage.getItem('k12_saved_zip') || '10001';
+  let activeTempUnit = localStorage.getItem('k12_temp_unit') || 'fahrenheit'; // 'fahrenheit', 'celsius', or 'kelvin'
+  let activeFontFamily = localStorage.getItem('k12_saved_font') || '"Lato Extended", "Lato", sans-serif';
+
+  let activeCardBgColor = localStorage.getItem('k12_card_bg_color') || '#262626';
+  let activeCardTextColor = localStorage.getItem('k12_card_text_color') || '#ffffff';
+
+  let activeTabBgColor = localStorage.getItem('k12_active_tab_bg') || '#333333';
+  let activeTabTextColor = localStorage.getItem('k12_active_tab_text') || '#ffffff';
+  let inactiveTabBgColor = localStorage.getItem('k12_inactive_tab_bg') || '#1d1d1d';
+  let inactiveTabTextColor = localStorage.getItem('k12_inactive_tab_text') || '#a3a3a3';
+
+  // Dynamic Google Font Loader
+  function loadGoogleFont(fontName) {
+    if (!fontName || fontName.includes("sans-serif") || fontName.includes("serif") || fontName.includes("monospace")) return;
+    const cleanFont = fontName.replace(/["']/g, '').trim();
+    const fontId = `k12-gfont-${cleanFont.replace(/\s+/g, '-').toLowerCase()}`;
+
+    if (!document.getElementById(fontId)) {
+      const link = document.createElement('link');
+      link.id = fontId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(cleanFont)}:wght@400;600;700&display=swap`;
+      document.head.appendChild(link);
+    }
+  }
+
+  // Dynamic style tag
+  const dynamicColorStyle = document.createElement("style");
+  dynamicColorStyle.id = "k12-dynamic-colors";
+  document.head.appendChild(dynamicColorStyle);
+
+  function applyCustomColors() {
+    loadGoogleFont(activeFontFamily);
+
+    dynamicColorStyle.innerHTML = `
+      body, body * {
+        font-family: ${activeFontFamily} !important;
+      }
+
+      div[role="tablist"],
+      div[data-slot="card"],
+      span.bg-surface-neutral-main {
+        background-color: ${activeCardBgColor} !important;
+      }
+      div[role="tablist"] *,
+      div[data-slot="card"] *,
+      span.bg-surface-neutral-main * {
+        color: ${activeCardTextColor} !important;
+      }
+
+      button[role="tab"][data-state="active"] {
+        background-color: ${activeTabBgColor} !important;
+        color: ${activeTabTextColor} !important;
+      }
+      button[role="tab"][data-state="active"] * {
+        color: ${activeTabTextColor} !important;
+      }
+
+      button[role="tab"][data-state="inactive"] {
+        background-color: ${inactiveTabBgColor} !important;
+        color: ${inactiveTabTextColor} !important;
+      }
+      button[role="tab"][data-state="inactive"] * {
+        color: ${inactiveTabTextColor} !important;
+      }
+    `;
+  }
+
+  // Base Theme CSS
+  const themeStyle = document.createElement("style");
+  themeStyle.innerHTML = `
+    :root {
+      --border: #0000 !important;
+      --radius-md: 4px !important;
+      --color-primary-100: var(--color-neutral-100) !important;
+      --color-surface-primary-100: var(--color-neutral-100) !important;
+      --color-surface-primary-200: var(--color-neutral-200) !important;
+      --color-surface-primary-300: var(--color-neutral-300) !important;
+      --color-surface-primary-400: var(--color-neutral-400) !important;
+      --color-primary-alternate-100: var(--color-foreground) !important;
+      --custom-background: var(--color-surface-neutral-main) !important;
+    }
+    [data-theme=dark] {
+      --color-neutral-200: var(--global-neutral-800);
+      --color-neutral-300: var(--global-neutral-700);
+      --color-neutral-400: var(--global-neutral-600);
+    }
+    .bg-surface-primary-600 { background: rgba(0, 0, 0, 0.5) !important; }
+    .fill-surface-primary-600 { fill: rgba(0, 0, 0, 0) !important; }
+    .rounded-full:not(.bg-red-500):not(span[data-slot="badge"]):not(div.bg-primary-alternate-400) { border-radius: 4px !important; }
+    .shadow-sm, .shadow-xs { box-shadow: initial !important; }
+    .border-neutral-100 { border-color: #0000 !important }
+    .focus\\:bg-accent:focus { background-color: var(--color-primary-500) !important; }
+  `;
+  document.head.appendChild(themeStyle);
+
+  // Fog Modal UI Styles
+  const fogStyle = document.createElement('style');
+  fogStyle.textContent = `
+    .k12-fog-overlay { background-color: rgba(0, 0, 0, 0.6) !important; -webkit-backdrop-filter: blur(16px) !important; backdrop-filter: blur(16px) !important; }
+    .k12-fog-card { background-color: rgba(15, 15, 15, 0.85) !important; -webkit-backdrop-filter: blur(24px) saturate(180%) !important; backdrop-filter: blur(24px) saturate(180%) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important; }
+    .k12-fog-input { background-color: rgba(0, 0, 0, 0.5) !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; }
+    .k12-fog-input:focus { border-color: #3b82f6 !important; background-color: rgba(0, 0, 0, 0.7) !important; }
+    .k12-color-swatch { width: 36px; height: 36px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; cursor: pointer; background: none; }
+    .k12-color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+    .k12-color-swatch::-webkit-color-swatch { border: none; border-radius: 6px; }
+    .k12-scrollable::-webkit-scrollbar { width: 6px; }
+    .k12-scrollable::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 8px; }
+    .k12-scrollable::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 8px; }
+    .k12-scrollable::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+    .k12-nav-tab { padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; color: #a3a3a3; transition: all 0.2s; }
+    .k12-nav-tab.active { background-color: rgba(255, 255, 255, 0.12); color: #ffffff; }
+  `;
+  document.head.appendChild(fogStyle);
+
+  let currentWidgetTimeZone = null;
+
+  function getWeatherCondition(code) {
+    if (code === 0) return 'CLEAR';
+    if (code >= 1 && code <= 3) return 'CLOUDY';
+    if (code >= 51 && code <= 67) return 'RAIN';
+    if (code >= 71 && code <= 77) return 'SNOW';
+    if (code >= 80 && code <= 82) return 'RAIN';
+    if (code >= 95) return 'THUNDER';
+    return 'RAIN';
+  }
+
+  function startDynamicClock() {
+    setInterval(() => {
+      const weatherWidgets = document.querySelectorAll('[data-slot-index]');
+      weatherWidgets.forEach((widgetSlot) => {
+        const timeDigitElement = widgetSlot.querySelector('.font-bold.tracking-tighter');
+        const ampmElement = widgetSlot.querySelector('.font-semibold.text-2xl');
+        if (!timeDigitElement) return;
+
+        const now = new Date();
+        const options = { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true };
+        if (currentWidgetTimeZone) options.timeZone = currentWidgetTimeZone;
+
+        const localTimeStr = now.toLocaleTimeString('en-US', options);
+        const [timePart, ampm] = localTimeStr.split(' ');
+        const timeWithoutSeconds = timePart.split(':').slice(0, 2).join(':');
+
+        timeDigitElement.textContent = timeWithoutSeconds;
+        if (ampmElement && ampm) ampmElement.textContent = ampm;
+      });
+    }, 1000);
+  }
+
+  async function updateWidgetByZip(widgetSlot, zipCode) {
+    try {
+      const geoRes = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+      if (!geoRes.ok) throw new Error('Invalid ZIP Code');
+      const geoData = await geoRes.json();
+
+      const place = geoData.places[0];
+      const cityName = place['place name'];
+      const lat = place.latitude;
+      const lon = place.longitude;
+
+      // Open-Meteo expects either fahrenheit or celsius
+      const apiUnit = activeTempUnit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+
+      const weatherRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=${apiUnit}&timezone=auto`
+      );
+      const weatherData = await weatherRes.json();
+
+      let rawTemp = weatherData.current.temperature_2m;
+      let unitSymbol = '°';
+
+      if (activeTempUnit === 'kelvin') {
+        rawTemp = rawTemp + 273.15; // Convert Celsius to Kelvin
+        unitSymbol = ' K';
+      }
+
+      const temp = Math.round(rawTemp * 10) / 10;
+      const weatherCode = weatherData.current.weather_code;
+      const condition = getWeatherCondition(weatherCode);
+
+      currentWidgetTimeZone = weatherData.timezone;
+
+      const locationSpan = widgetSlot.querySelector('.lucide-map-pin + span') || widgetSlot.querySelector('svg.lucide-map-pin ~ span');
+      const tempElement = widgetSlot.querySelector('.font-bold.\\@lg\\:text-\\[48px\\]') || widgetSlot.querySelector('.font-bold.text-3xl');
+      const conditionElement = widgetSlot.querySelector('p.font-semibold') || widgetSlot.querySelector('.uppercase.font-semibold');
+
+      if (locationSpan) {
+        locationSpan.textContent = cityName;
+        widgetSlot.setAttribute('data-applied-zip', `${zipCode}-${activeTempUnit}`);
+      }
+      if (tempElement) tempElement.textContent = `${temp}${unitSymbol}`;
+      if (conditionElement) conditionElement.textContent = condition;
+    } catch (err) {
+      console.error('Could not update weather:', err);
+    }
+  }
+
+  function updateAllWeatherWidgets(zipCode) {
+    const slots = document.querySelectorAll('[data-slot-index]');
+    slots.forEach((slot) => {
+      const isWeather = slot.querySelector('div[class*="weather-widget"]') || slot.querySelector('.lucide-map-pin');
+      if (isWeather && slot.getAttribute('data-applied-zip') !== `${zipCode}-${activeTempUnit}`) {
+        updateWidgetByZip(slot, zipCode);
+      }
+    });
+  }
+
+  function setupColorInputPair(pickerId, hexId) {
+    const picker = document.getElementById(pickerId);
+    const hex = document.getElementById(hexId);
+    if (!picker || !hex) return;
+
+    picker.addEventListener('input', (e) => (hex.value = e.target.value));
+    hex.addEventListener('input', (e) => {
+      if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) picker.value = e.target.value;
+    });
+  }
+
+  function renderPalettes(filterText = "") {
+    const container = document.getElementById('k12-palette-list');
+    if (!container) return;
+
+    const filtered = PRESET_PALETTES.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<p class="text-xs text-neutral-400 py-4 text-center col-span-2">No palettes match "${filterText}"</p>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(p => `
+      <div class="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between hover:border-white/30 transition-all">
+        <div>
+          <p class="text-xs font-bold text-white mb-1.5">${p.name}</p>
+          <div class="flex items-center gap-1">
+            <span class="w-3.5 h-3.5 rounded-full border border-white/20 inline-block" style="background:${p.cardBg}" title="Card Base"></span>
+            <span class="w-3.5 h-3.5 rounded-full border border-white/20 inline-block" style="background:${p.activeBg}" title="Active Tab"></span>
+            <span class="w-3.5 h-3.5 rounded-full border border-white/20 inline-block" style="background:${p.inactiveBg}" title="Inactive Tab"></span>
+          </div>
+        </div>
+        <button type="button" data-palette-name="${p.name}" class="k12-apply-btn text-xs font-semibold px-2.5 py-1 bg-blue-600/80 hover:bg-blue-500 rounded-lg text-white transition-colors cursor-pointer">
+          Apply
+        </button>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.k12-apply-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pName = btn.getAttribute('data-palette-name');
+        const palette = PRESET_PALETTES.find(item => item.name === pName);
+        if (!palette) return;
+
+        document.getElementById('k12-card-bg-picker').value = palette.cardBg;
+        document.getElementById('k12-card-bg-hex').value = palette.cardBg;
+        document.getElementById('k12-card-text-picker').value = palette.cardText;
+        document.getElementById('k12-card-text-hex').value = palette.cardText;
+
+        document.getElementById('k12-active-tab-bg-picker').value = palette.activeBg;
+        document.getElementById('k12-active-tab-bg-hex').value = palette.activeBg;
+        document.getElementById('k12-active-tab-text-picker').value = palette.activeText;
+        document.getElementById('k12-active-tab-text-hex').value = palette.activeText;
+
+        document.getElementById('k12-inactive-tab-bg-picker').value = palette.inactiveBg;
+        document.getElementById('k12-inactive-tab-bg-hex').value = palette.inactiveBg;
+        document.getElementById('k12-inactive-tab-text-picker').value = palette.inactiveText;
+        document.getElementById('k12-inactive-tab-text-hex').value = palette.inactiveText;
+      });
+    });
+  }
+
+  function setupSectionTabs() {
+    const tabs = document.querySelectorAll('.k12-nav-tab');
+    const sections = document.querySelectorAll('.k12-tab-section');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        sections.forEach(s => s.classList.add('hidden'));
+
+        tab.classList.add('active');
+        const targetId = tab.getAttribute('data-target');
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) targetSection.classList.remove('hidden');
+      });
+    });
+  }
+
+  function exportConfig() {
+    const config = {
+      zip: localStorage.getItem('k12_saved_zip') || '10001',
+      tempUnit: localStorage.getItem('k12_temp_unit') || 'fahrenheit',
+      font: localStorage.getItem('k12_saved_font') || '',
+      cardBg: localStorage.getItem('k12_card_bg_color') || '#262626',
+      cardText: localStorage.getItem('k12_card_text_color') || '#ffffff',
+      activeTabBg: localStorage.getItem('k12_active_tab_bg') || '#333333',
+      activeTabText: localStorage.getItem('k12_active_tab_text') || '#ffffff',
+      inactiveTabBg: localStorage.getItem('k12_inactive_tab_bg') || '#1d1d1d',
+      inactiveTabText: localStorage.getItem('k12_inactive_tab_text') || '#a3a3a3'
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `k12_theme_config_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  }
+
+  function importConfig(jsonString) {
+    try {
+      const config = JSON.parse(jsonString);
+      if (config.zip) localStorage.setItem('k12_saved_zip', config.zip);
+      if (config.tempUnit) localStorage.setItem('k12_temp_unit', config.tempUnit);
+      if (config.font) localStorage.setItem('k12_saved_font', config.font);
+      if (config.cardBg) localStorage.setItem('k12_card_bg_color', config.cardBg);
+      if (config.cardText) localStorage.setItem('k12_card_text_color', config.cardText);
+      if (config.activeTabBg) localStorage.setItem('k12_active_tab_bg', config.activeTabBg);
+      if (config.activeTabText) localStorage.setItem('k12_active_tab_text', config.activeTabText);
+      if (config.inactiveTabBg) localStorage.setItem('k12_inactive_tab_bg', config.inactiveTabBg);
+      if (config.inactiveTabText) localStorage.setItem('k12_inactive_tab_text', config.inactiveTabText);
+
+      location.reload();
+    } catch (e) {
+      alert("Invalid configuration file format.");
+    }
+  }
+
+  function createSettingsPanel() {
+    if (document.getElementById('k12-settings-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'k12-settings-modal';
+    modal.className = 'fixed inset-0 z-[9999] hidden items-center justify-center k12-fog-overlay transition-opacity p-4';
+
+    modal.innerHTML = `
+      <div id="k12-settings-card" class="k12-fog-card w-full max-w-lg h-[580px] rounded-2xl text-white p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-3">
+            <div class="flex items-center gap-2.5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <h2 class="text-xl font-bold text-white">Dashboard Settings</h2>
+            </div>
+            <button id="k12-settings-close" class="text-neutral-400 hover:text-white text-2xl font-bold cursor-pointer p-1">&times;</button>
+          </div>
+
+          <!-- Section Tabs Navigation -->
+          <div class="flex items-center gap-1 bg-white/5 p-1 rounded-lg mb-4 border border-white/10">
+            <button type="button" class="k12-nav-tab active flex-1 text-center" data-target="section-general">General</button>
+            <button type="button" class="k12-nav-tab flex-1 text-center" data-target="section-palettes">Palettes</button>
+            <button type="button" class="k12-nav-tab flex-1 text-center" data-target="section-theme">Theme Customizer</button>
+            <button type="button" class="k12-nav-tab flex-1 text-center" data-target="section-backup">Backup / Sync</button>
+          </div>
+
+          <div class="k12-scrollable max-h-[360px] overflow-y-auto pr-2">
+            <!-- General Section -->
+            <div id="section-general" class="k12-tab-section space-y-4">
+              <div>
+                <label class="block text-sm font-semibold text-neutral-300 mb-2">Weather ZIP Code</label>
+                <input type="text" id="k12-zip-input" maxlength="5" value="${activeZipCode}" class="k12-fog-input w-full rounded-lg px-4 py-2 text-sm font-semibold text-white outline-none">
+                <p id="k12-zip-error" class="hidden text-xs font-semibold text-red-400 mt-1">Please enter a valid 5-digit US ZIP code.</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-neutral-300 mb-2">Temperature Unit</label>
+                <select id="k12-temp-unit-select" class="k12-fog-input w-full rounded-lg px-4 py-2 text-sm font-semibold text-white outline-none cursor-pointer">
+                  <option value="fahrenheit" ${activeTempUnit === 'fahrenheit' ? 'selected' : ''}>Fahrenheit (°F)</option>
+                  <option value="celsius" ${activeTempUnit === 'celsius' ? 'selected' : ''}>Celsius (°C)</option>
+                  <option value="kelvin" ${activeTempUnit === 'kelvin' ? 'selected' : ''}>Kelvin (K)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Palettes Section -->
+            <div id="section-palettes" class="k12-tab-section hidden space-y-3">
+              <p class="text-xs uppercase font-bold tracking-wider text-neutral-400">Palette Presets Library</p>
+              <input type="text" id="k12-palette-search" placeholder="Search color palettes..." class="k12-fog-input w-full rounded-lg px-3 py-1.5 text-xs font-semibold text-white outline-none">
+              <div id="k12-palette-list" class="grid grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-1 k12-scrollable">
+              </div>
+            </div>
+
+            <!-- Theme Customizer Section -->
+            <div id="section-theme" class="k12-tab-section hidden space-y-4">
+              <!-- Typography Google Search -->
+              <div class="space-y-3 border-b border-white/10 pb-4">
+                <p class="text-xs uppercase font-bold tracking-wider text-neutral-400">Typography</p>
+                <div>
+                  <label class="block text-xs font-semibold text-neutral-300 mb-1">Search or Type Any Google Font</label>
+                  <input
+                    list="k12-google-fonts-list"
+                    id="k12-custom-font-input"
+                    placeholder="Type font name (e.g. Poppins, Lobster, Inter)..."
+                    value="${activeFontFamily.replace(/["']/g, '').replace(', sans-serif', '')}"
+                    class="k12-fog-input w-full rounded-lg px-3 py-1.5 text-xs font-semibold text-white outline-none"
+                  >
+                  <datalist id="k12-google-fonts-list">
+                    ${GOOGLE_FONTS_SUGGESTIONS.map(f => `<option value="${f}">`).join('')}
+                  </datalist>
+                  <p class="text-[10px] text-neutral-400 mt-1">Type any valid name from Google Fonts and click save to auto-import it.</p>
+                </div>
+              </div>
+
+              <!-- Card Base Styling -->
+              <div class="space-y-3 border-b border-white/10 pb-4">
+                <p class="text-xs uppercase font-bold tracking-wider text-neutral-400">Card Base Theme</p>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Card Background</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-card-bg-picker" value="${activeCardBgColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-card-bg-hex" value="${activeCardBgColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Card Text</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-card-text-picker" value="${activeCardTextColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-card-text-hex" value="${activeCardTextColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab Button Styling -->
+              <div class="space-y-3">
+                <p class="text-xs uppercase font-bold tracking-wider text-neutral-400">Tab Button Styling</p>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Active Tab Background</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-active-tab-bg-picker" value="${activeTabBgColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-active-tab-bg-hex" value="${activeTabBgColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Active Tab Text</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-active-tab-text-picker" value="${activeTabTextColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-active-tab-text-hex" value="${activeTabTextColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Inactive Tab Background</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-inactive-tab-bg-picker" value="${inactiveTabBgColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-inactive-tab-bg-hex" value="${inactiveTabBgColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-neutral-300">Inactive Tab Text</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="k12-inactive-tab-text-picker" value="${inactiveTabTextColor}" class="k12-color-swatch">
+                    <input type="text" id="k12-inactive-tab-text-hex" value="${inactiveTabTextColor}" class="k12-fog-input w-24 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-white outline-none">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Backup & Sync Section -->
+            <div id="section-backup" class="k12-tab-section hidden space-y-4">
+              <div>
+                <p class="text-xs uppercase font-bold tracking-wider text-neutral-400 mb-2">Export Configuration</p>
+                <p class="text-xs text-neutral-300 mb-3">Download your current setup as a JSON file to transfer your custom theme, Google Fonts, and weather settings to another browser or save to Google Drive.</p>
+                <button type="button" id="k12-export-btn" class="w-full py-2 bg-blue-600/80 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer">
+                  Export Settings (.json)
+                </button>
+              </div>
+
+              <div class="border-t border-white/10 pt-4">
+                <p class="text-xs uppercase font-bold tracking-wider text-neutral-400 mb-2">Import Configuration</p>
+                <p class="text-xs text-neutral-300 mb-3">Restore settings from a previously saved JSON file.</p>
+                <input type="file" id="k12-import-file" accept=".json" class="hidden">
+                <button type="button" id="k12-import-btn" class="w-full py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer">
+                  Choose JSON File to Import
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-white/10">
+          <button id="k12-settings-cancel" class="px-4 py-2 text-sm font-semibold text-neutral-300 hover:bg-white/10 hover:text-white rounded-lg cursor-pointer transition-colors">Cancel</button>
+          <button id="k12-settings-save" class="px-5 py-2 text-sm font-semibold text-white bg-blue-600/80 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors shadow-lg">Save Changes</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    setupSectionTabs();
+
+    setupColorInputPair('k12-card-bg-picker', 'k12-card-bg-hex');
+    setupColorInputPair('k12-card-text-picker', 'k12-card-text-hex');
+    setupColorInputPair('k12-active-tab-bg-picker', 'k12-active-tab-bg-hex');
+    setupColorInputPair('k12-active-tab-text-picker', 'k12-active-tab-text-hex');
+    setupColorInputPair('k12-inactive-tab-bg-picker', 'k12-inactive-tab-bg-hex');
+    setupColorInputPair('k12-inactive-tab-text-picker', 'k12-inactive-tab-text-hex');
+
+    renderPalettes();
+
+    document.getElementById('k12-palette-search').addEventListener('input', (e) => {
+      renderPalettes(e.target.value.trim());
+    });
+
+    // Export / Import button handlers
+    document.getElementById('k12-export-btn').addEventListener('click', exportConfig);
+    const importFileInput = document.getElementById('k12-import-file');
+    const importBtn = document.getElementById('k12-import-btn');
+
+    importBtn.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => importConfig(event.target.result);
+      reader.readAsText(file);
+    });
+
+    const closeBtn = document.getElementById('k12-settings-close');
+    const cancelBtn = document.getElementById('k12-settings-cancel');
+    const saveBtn = document.getElementById('k12-settings-save');
+    const zipInput = document.getElementById('k12-zip-input');
+    const tempSelect = document.getElementById('k12-temp-unit-select');
+    const zipError = document.getElementById('k12-zip-error');
+    const customFontInput = document.getElementById('k12-custom-font-input');
+
+    const closeModal = () => modal.classList.add('hidden');
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+
+    saveBtn.addEventListener('click', () => {
+      const newZip = zipInput.value.trim();
+      if (!/^\d{5}$/.test(newZip)) {
+        zipError.classList.remove('hidden');
+        return;
+      }
+      zipError.classList.add('hidden');
+
+      activeZipCode = newZip;
+      activeTempUnit = tempSelect.value;
+
+      const userFontChoice = customFontInput.value.trim();
+      if (userFontChoice) {
+        activeFontFamily = `"${userFontChoice}", sans-serif`;
+      }
+
+      activeCardBgColor = document.getElementById('k12-card-bg-hex').value;
+      activeCardTextColor = document.getElementById('k12-card-text-hex').value;
+      activeTabBgColor = document.getElementById('k12-active-tab-bg-hex').value;
+      activeTabTextColor = document.getElementById('k12-active-tab-text-hex').value;
+      inactiveTabBgColor = document.getElementById('k12-inactive-tab-bg-hex').value;
+      inactiveTabTextColor = document.getElementById('k12-inactive-tab-text-hex').value;
+
+      localStorage.setItem('k12_saved_zip', activeZipCode);
+      localStorage.setItem('k12_temp_unit', activeTempUnit);
+      localStorage.setItem('k12_saved_font', activeFontFamily);
+      localStorage.setItem('k12_card_bg_color', activeCardBgColor);
+      localStorage.setItem('k12_card_text_color', activeCardTextColor);
+      localStorage.setItem('k12_active_tab_bg', activeTabBgColor);
+      localStorage.setItem('k12_active_tab_text', activeTabTextColor);
+      localStorage.setItem('k12_inactive_tab_bg', inactiveTabBgColor);
+      localStorage.setItem('k12_inactive_tab_text', inactiveTabTextColor);
+
+      applyCustomColors();
+      updateAllWeatherWidgets(activeZipCode);
+      closeModal();
+    });
+  }
+
+  // Add settings gear button to page header
+  function attachSettingsButton() {
+    if (document.getElementById('k12-settings-btn')) return;
+
+    const navContainer = document.querySelector('header') || document.querySelector('nav') || document.body;
+    const btn = document.createElement('button');
+    btn.id = 'k12-settings-btn';
+    btn.className = 'fixed bottom-4 right-4 z-[9990] p-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition-transform hover:scale-105 cursor-pointer';
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+
+    btn.addEventListener('click', () => {
+      createSettingsPanel();
+      const modal = document.getElementById('k12-settings-modal');
+      if (modal) modal.classList.remove('hidden');
+    });
+
+    navContainer.appendChild(btn);
+  }
+
+  // Initialization
+  applyCustomColors();
+  startDynamicClock();
+
+  const observer = new MutationObserver(() => {
+    attachSettingsButton();
+    updateAllWeatherWidgets(activeZipCode);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+})();
