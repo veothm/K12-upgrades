@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         K12 Command Center — Radial Menu & Power Tools
 // @namespace    https://github.com/veothm/K12-upgrades
-// @version      1.0.4
+// @version      1.0.5
 // @description  A fresh Violentmonkey command center for home.k12.com: radial menu, command search, themes, focus mode, notes, shortcuts, and page tools.
 // @match        https://home.k12.com/*
 // @updateURL     https://raw.githubusercontent.com/veothm/K12-upgrades/main/K12-Command-Center.user.js
@@ -150,6 +150,7 @@
 
   function closeRadial() {
     radialOpen = false;
+    center.style.display = 'none';
     root.classList.remove('cc-visible');
     document.removeEventListener('keydown', onOverlayKeydown, true);
   }
@@ -177,6 +178,7 @@
       button.style.top = (Math.sin(angle) * dist - (innerWidth < 540 ? 35 : 41)) + 'px';
       button.style.transitionDelay = (index * 12) + 'ms';
     });
+    center.style.display = 'grid';
     root.classList.add('cc-visible');
     document.addEventListener('keydown', onOverlayKeydown, true);
     actionButtons[0].focus({ preventScroll: true });
