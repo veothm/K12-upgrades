@@ -186,7 +186,7 @@
       const dist = innerWidth < 540 ? radius * 0.76 : radius;
       button.style.left = (Math.cos(angle) * dist - (innerWidth < 540 ? 44 : 54)) + 'px';
       button.style.top = (Math.sin(angle) * dist - (innerWidth < 540 ? 35 : 41)) + 'px';
-      button.style.transitionDelay = (index * 12) + 'ms';
+      button.style.setProperty('--cc-delay', (index * 35) + 'ms');
     });
     root.classList.add('cc-visible');
     document.addEventListener('keydown', onOverlayKeydown, true);
