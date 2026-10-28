@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         K12 Command Center — Radial Menu & Power Tools
 // @namespace    https://github.com/veothm/K12-upgrades
-// @version      1.0.2
+// @version      1.0.3
 // @description  A fresh Violentmonkey command center for home.k12.com: radial menu, command search, themes, focus mode, notes, shortcuts, and page tools.
 // @match        https://home.k12.com/*
 // @updateURL     https://raw.githubusercontent.com/veothm/K12-upgrades/main/K12-Command-Center.user.js
@@ -68,7 +68,7 @@
     '#k12cc-root *{box-sizing:border-box}#k12cc-root button,#k12cc-root input,#k12cc-root textarea,#k12cc-root select{font:inherit}#k12cc-root button{color:inherit;cursor:pointer}#k12cc-root button:focus-visible,#k12cc-root input:focus-visible,#k12cc-root textarea:focus-visible,#k12cc-root select:focus-visible{outline:2px solid var(--cc-accent);outline-offset:3px}',
     '#k12cc-root .cc-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.56);backdrop-filter:blur(5px);opacity:0;transition:opacity .16s}#k12cc-root.cc-visible .cc-backdrop{opacity:1;pointer-events:auto}',
     '#k12cc-root .cc-wheel{position:absolute;width:0;height:0}#k12cc-root .cc-center{position:absolute;left:-43px;top:-43px;width:86px;height:86px;border-radius:50%;display:grid;place-content:center;text-align:center;background:var(--cc-panel);border:1px solid var(--cc-accent);box-shadow:0 0 0 8px color-mix(in srgb,var(--cc-accent) 12%,transparent),0 0 38px color-mix(in srgb,var(--cc-accent) 24%,transparent);cursor:pointer;opacity:0;visibility:hidden;pointer-events:none;transform:scale(.78);transition:opacity .18s,transform .22s,visibility 0s linear .22s}#k12cc-root.cc-visible .cc-center{opacity:1;visibility:visible;pointer-events:auto;transform:scale(1);transition-delay:0s}',
-    '#k12cc-root .cc-center strong{font-size:23px;letter-spacing:-1px}#k12cc-root .cc-center small{font-size:9px;color:var(--cc-accent);letter-spacing:1.4px}',
+    '#k12cc-root:not(.cc-visible) .cc-center{display:none!important}#k12cc-root.cc-visible .cc-center{display:grid!important}#k12cc-root .cc-center strong{font-size:23px;letter-spacing:-1px}#k12cc-root .cc-center small{font-size:9px;color:var(--cc-accent);letter-spacing:1.4px}',
     '#k12cc-root .cc-action{position:absolute;width:108px;min-height:82px;left:-54px;top:-41px;border:1px solid #ffffff20;border-radius:18px;background:var(--cc-panel);box-shadow:0 14px 34px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transform:scale(.72);transition:opacity .16s,transform .18s,border-color .16s,background .16s;pointer-events:none}',
     '#k12cc-root.cc-visible .cc-action{opacity:1;transform:scale(1);pointer-events:auto}#k12cc-root:not(.cc-visible) .cc-backdrop{pointer-events:none}#k12cc-root .cc-action:hover{border-color:var(--cc-accent);background:color-mix(in srgb,var(--cc-panel) 75%,var(--cc-accent));transform:scale(1.07)}#k12cc-root .cc-icon{font-size:24px;line-height:1}#k12cc-root .cc-action span:last-child{font-size:11px;font-weight:650;text-align:center}',
     '#k12cc-root .cc-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);width:min(560px,calc(100vw - 28px));max-height:min(740px,calc(100vh - 28px));overflow:auto;background:var(--cc-bg);border:1px solid color-mix(in srgb,var(--cc-accent) 35%,#ffffff18);border-radius:22px;box-shadow:0 28px 100px #0009;padding:22px;opacity:0;visibility:hidden;transition:opacity .16s,transform .16s;pointer-events:none}',
