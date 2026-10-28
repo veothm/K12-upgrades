@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         K12 Command Center — Radial Menu & Power Tools
 // @namespace    https://github.com/veothm/K12-upgrades
-// @version      1.0.0
+// @version      1.0.1
 // @description  A fresh Violentmonkey command center for home.k12.com: radial menu, command search, themes, focus mode, notes, shortcuts, and page tools.
 // @match        https://home.k12.com/*
 // @run-at       document-idle
@@ -68,7 +68,7 @@
     '#k12cc-root .cc-wheel{position:absolute;width:0;height:0}#k12cc-root .cc-center{position:absolute;left:-43px;top:-43px;width:86px;height:86px;border-radius:50%;display:grid;place-content:center;text-align:center;background:var(--cc-panel);border:1px solid var(--cc-accent);box-shadow:0 0 0 8px color-mix(in srgb,var(--cc-accent) 12%,transparent),0 0 38px color-mix(in srgb,var(--cc-accent) 24%,transparent);cursor:pointer}',
     '#k12cc-root .cc-center strong{font-size:23px;letter-spacing:-1px}#k12cc-root .cc-center small{font-size:9px;color:var(--cc-accent);letter-spacing:1.4px}',
     '#k12cc-root .cc-action{position:absolute;width:108px;min-height:82px;left:-54px;top:-41px;border:1px solid #ffffff20;border-radius:18px;background:var(--cc-panel);box-shadow:0 14px 34px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transform:scale(.72);transition:opacity .16s,transform .18s,border-color .16s,background .16s;pointer-events:none}',
-    '#k12cc-root .cc-visible .cc-action{opacity:1;transform:scale(1);pointer-events:auto}#k12cc-root .cc-action:hover{border-color:var(--cc-accent);background:color-mix(in srgb,var(--cc-panel) 75%,var(--cc-accent));transform:scale(1.07)}#k12cc-root .cc-icon{font-size:24px;line-height:1}#k12cc-root .cc-action span:last-child{font-size:11px;font-weight:650;text-align:center}',
+    '#k12cc-root.cc-visible .cc-action{opacity:1;transform:scale(1);pointer-events:auto}#k12cc-root .cc-action:hover{border-color:var(--cc-accent);background:color-mix(in srgb,var(--cc-panel) 75%,var(--cc-accent));transform:scale(1.07)}#k12cc-root .cc-icon{font-size:24px;line-height:1}#k12cc-root .cc-action span:last-child{font-size:11px;font-weight:650;text-align:center}',
     '#k12cc-root .cc-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);width:min(560px,calc(100vw - 28px));max-height:min(740px,calc(100vh - 28px));overflow:auto;background:var(--cc-bg);border:1px solid color-mix(in srgb,var(--cc-accent) 35%,#ffffff18);border-radius:22px;box-shadow:0 28px 100px #0009;padding:22px;opacity:0;visibility:hidden;transition:opacity .16s,transform .16s;pointer-events:none}',
     '#k12cc-root .cc-panel.cc-panel-open{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1);pointer-events:auto}#k12cc-root .cc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}#k12cc-root .cc-header h2{margin:0;font-size:22px;letter-spacing:-.5px}#k12cc-root .cc-sub{margin:5px 0 0;color:var(--cc-muted);font-size:12px}',
     '#k12cc-root .cc-x{border:1px solid #ffffff22;background:var(--cc-panel);border-radius:10px;padding:7px 10px}#k12cc-root .cc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#k12cc-root .cc-card{background:var(--cc-panel);border:1px solid #ffffff16;border-radius:14px;padding:13px;min-width:0}#k12cc-root .cc-card h3{margin:0 0 7px;font-size:13px}#k12cc-root .cc-muted{color:var(--cc-muted);font-size:12px}',
@@ -346,7 +346,7 @@
       if (paletteOpen) closeAll();
       else openPalette();
     }
-  });
+  }, true);
 
   function updateClock() {
     if (!settings.showClock) { clock.style.display = 'none'; return; }
