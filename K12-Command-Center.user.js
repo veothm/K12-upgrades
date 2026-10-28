@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         K12 Command Center — Radial Menu & Power Tools
 // @namespace    https://github.com/veothm/K12-upgrades
-// @version      1.0.5
+// @version      1.1.0
 // @description  A fresh Violentmonkey command center for home.k12.com: radial menu, command search, themes, focus mode, notes, shortcuts, and page tools.
 // @match        https://home.k12.com/*
 // @updateURL     https://raw.githubusercontent.com/veothm/K12-upgrades/main/K12-Command-Center.user.js
@@ -26,7 +26,9 @@
     commandKey: '/',
     notes: '',
     favorites: [],
-    customLabel: 'K12 Command Center'
+    customLabel: 'K12 Command Center',
+    radius: 180, actionScale: 100, animationSpeed: 180, backdropBlur: 5, backdropOpacity: 56,
+    showBackdrop: true, compactActions: false, hoverGlow: true, customCenterTitle: 'K12', customCenterSubtitle: 'COMMAND'
   };
 
   const THEMES = [
@@ -66,11 +68,11 @@
   style.textContent = [
     '#k12cc-root{--cc-bg:#0b1020;--cc-panel:#121a2b;--cc-text:#eef4ff;--cc-muted:#9aa9c3;--cc-accent:#67e8f9;position:fixed;inset:0;z-index:2147483000;pointer-events:none;color:var(--cc-text);font:14px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}',
     '#k12cc-root *{box-sizing:border-box}#k12cc-root button,#k12cc-root input,#k12cc-root textarea,#k12cc-root select{font:inherit}#k12cc-root button{color:inherit;cursor:pointer}#k12cc-root button:focus-visible,#k12cc-root input:focus-visible,#k12cc-root textarea:focus-visible,#k12cc-root select:focus-visible{outline:2px solid var(--cc-accent);outline-offset:3px}',
-    '#k12cc-root .cc-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.56);backdrop-filter:blur(5px);opacity:0;transition:opacity .16s}#k12cc-root.cc-visible .cc-backdrop{opacity:1;pointer-events:auto}',
+    '#k12cc-root .cc-backdrop{position:absolute;inset:0;background:rgba(2,6,23,var(--cc-backdrop-opacity,.56));backdrop-filter:blur(var(--cc-backdrop-blur,5px));opacity:0;transition:opacity var(--cc-speed,.18s)}#k12cc-root.cc-visible .cc-backdrop{opacity:1;pointer-events:auto}',
     '#k12cc-root .cc-wheel{position:absolute;width:0;height:0}#k12cc-root:not(.cc-visible) .cc-wheel{display:none!important}#k12cc-root.cc-visible .cc-wheel{display:block!important}#k12cc-root .cc-center{position:absolute;left:-43px;top:-43px;width:86px;height:86px;border-radius:50%;display:grid;place-content:center;text-align:center;background:var(--cc-panel);border:1px solid var(--cc-accent);box-shadow:0 0 0 8px color-mix(in srgb,var(--cc-accent) 12%,transparent),0 0 38px color-mix(in srgb,var(--cc-accent) 24%,transparent);cursor:pointer;opacity:0;visibility:hidden;pointer-events:none;transform:scale(.78);transition:opacity .18s,transform .22s,visibility 0s linear .22s}#k12cc-root.cc-visible .cc-center{opacity:1;visibility:visible;pointer-events:auto;transform:scale(1);transition-delay:0s}',
     '#k12cc-root:not(.cc-visible) .cc-center{display:none!important}#k12cc-root.cc-visible .cc-center{display:grid!important}#k12cc-root .cc-center strong{font-size:23px;letter-spacing:-1px}#k12cc-root .cc-center small{font-size:9px;color:var(--cc-accent);letter-spacing:1.4px}',
-    '#k12cc-root .cc-action{position:absolute;width:108px;min-height:82px;left:-54px;top:-41px;border:1px solid #ffffff20;border-radius:18px;background:var(--cc-panel);box-shadow:0 14px 34px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transform:scale(.72);transition:opacity .16s,transform .18s,border-color .16s,background .16s;pointer-events:none}',
-    '#k12cc-root.cc-visible .cc-action{opacity:1;transform:scale(1);pointer-events:auto}#k12cc-root:not(.cc-visible) .cc-backdrop{pointer-events:none}#k12cc-root .cc-action:hover{border-color:var(--cc-accent);background:color-mix(in srgb,var(--cc-panel) 75%,var(--cc-accent));transform:scale(1.07)}#k12cc-root .cc-icon{font-size:24px;line-height:1}#k12cc-root .cc-action span:last-child{font-size:11px;font-weight:650;text-align:center}',
+    '#k12cc-root .cc-action{position:absolute;width:108px;min-height:82px;left:-54px;top:-41px;border:1px solid #ffffff20;border-radius:18px;background:var(--cc-panel);box-shadow:0 14px 34px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transform:scale(.72);transition:opacity var(--cc-speed,.18s),transform var(--cc-speed,.18s),border-color .16s,background .16s;pointer-events:none}',
+    '#k12cc-root.cc-visible .cc-action{opacity:1;transform:scale(1);pointer-events:auto}#k12cc-root:not(.cc-visible) .cc-backdrop{pointer-events:none}#k12cc-root .cc-action:hover{border-color:var(--cc-accent);background:color-mix(in srgb,var(--cc-panel) 75%,var(--cc-accent));transform:scale(1.07)}#k12cc-root.cc-no-glow .cc-action:hover{transform:scale(1.02);box-shadow:none}#k12cc-root.cc-compact .cc-action{min-height:58px;gap:3px}#k12cc-root.cc-compact .cc-icon{font-size:19px}#k12cc-root .cc-icon{font-size:24px;line-height:1}#k12cc-root .cc-action span:last-child{font-size:11px;font-weight:650;text-align:center}',
     '#k12cc-root .cc-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);width:min(560px,calc(100vw - 28px));max-height:min(740px,calc(100vh - 28px));overflow:auto;background:var(--cc-bg);border:1px solid color-mix(in srgb,var(--cc-accent) 35%,#ffffff18);border-radius:22px;box-shadow:0 28px 100px #0009;padding:22px;opacity:0;visibility:hidden;transition:opacity .16s,transform .16s;pointer-events:none}',
     '#k12cc-root .cc-panel.cc-panel-open{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1);pointer-events:auto}#k12cc-root .cc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}#k12cc-root .cc-header h2{margin:0;font-size:22px;letter-spacing:-.5px}#k12cc-root .cc-sub{margin:5px 0 0;color:var(--cc-muted);font-size:12px}',
     '#k12cc-root .cc-x{border:1px solid #ffffff22;background:var(--cc-panel);border-radius:10px;padding:7px 10px}#k12cc-root .cc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#k12cc-root .cc-card{background:var(--cc-panel);border:1px solid #ffffff16;border-radius:14px;padding:13px;min-width:0}#k12cc-root .cc-card h3{margin:0 0 7px;font-size:13px}#k12cc-root .cc-muted{color:var(--cc-muted);font-size:12px}',
@@ -86,7 +88,7 @@
 
   const root = document.createElement('div');
   root.id = ID + '-root';
-  root.innerHTML = '<div class="cc-backdrop"></div><div class="cc-wheel" role="menu" aria-label="K12 quick actions"><div class="cc-center" tabindex="0" role="button" aria-label="Close quick menu"><strong> K12 </strong><small>COMMAND</small></div></div><section class="cc-panel" role="dialog" aria-modal="true" aria-labelledby="k12cc-title"></section><div class="cc-toast" role="status" aria-live="polite"></div><div class="cc-clock"></div>';
+  root.innerHTML = '<div class="cc-backdrop"></div><div class="cc-wheel" role="menu" aria-label="K12 quick actions"><div class="cc-center" tabindex="0" role="button" aria-label="Close quick menu"><strong class="cc-center-title">K12</strong><small class="cc-center-subtitle">COMMAND</small></div></div><section class="cc-panel" role="dialog" aria-modal="true" aria-labelledby="k12cc-title"></section><div class="cc-toast" role="status" aria-live="polite"></div><div class="cc-clock"></div>';
   document.body.appendChild(root);
 
   const wheel = root.querySelector('.cc-wheel');
@@ -137,6 +139,11 @@
     root.style.setProperty('--cc-text', theme.text);
     root.style.setProperty('--cc-muted', theme.muted);
     root.style.setProperty('--cc-accent', /^#[0-9a-f]{6}$/i.test(settings.accent) ? settings.accent : theme.accent);
+    root.style.setProperty('--cc-speed', (Math.max(0, Math.min(600, Number(settings.animationSpeed) || 180)) / 1000) + 's');
+    root.style.setProperty('--cc-backdrop-blur', Math.max(0, Math.min(20, Number(settings.backdropBlur) || 0)) + 'px');
+    root.style.setProperty('--cc-backdrop-opacity', String(Math.max(0, Math.min(90, Number(settings.backdropOpacity) || 0) / 100));
+    root.classList.toggle('cc-no-backdrop', !settings.showBackdrop); root.classList.toggle('cc-compact', Boolean(settings.compactActions)); root.classList.toggle('cc-no-glow', !settings.hoverGlow);
+    root.querySelector('.cc-center-title').textContent = settings.customCenterTitle || 'K12'; root.querySelector('.cc-center-subtitle').textContent = settings.customCenterSubtitle || 'COMMAND';
     document.body.classList.toggle('k12cc-focus', Boolean(settings.focusMode));
     clock.style.display = settings.showClock ? 'block' : 'none';
   }
@@ -166,7 +173,7 @@
   function openRadial(x, y) {
     closeAll();
     radialOpen = true;
-    const radius = Math.min(210, Math.max(142, Math.min(innerWidth, innerHeight) * 0.30));
+    const radius = Math.min(280, Math.max(100, Number(settings.radius) || 180));
     const cx = Math.max(118, Math.min(innerWidth - 118, Number.isFinite(x) && x > 0 ? x : innerWidth / 2));
     const cy = Math.max(112, Math.min(innerHeight - 112, Number.isFinite(y) && y > 0 ? y : innerHeight / 2));
     wheel.style.left = cx + 'px';
@@ -176,7 +183,7 @@
       const dist = innerWidth < 540 ? radius * 0.76 : radius;
       button.style.left = (Math.cos(angle) * dist - (innerWidth < 540 ? 44 : 54)) + 'px';
       button.style.top = (Math.sin(angle) * dist - (innerWidth < 540 ? 35 : 41)) + 'px';
-      button.style.transitionDelay = (index * 12) + 'ms';
+      button.style.transitionDelay = (index * Math.max(0, Math.min(50, Number(settings.animationSpeed) / 15 || 12))) + 'ms';
     });
     center.style.display = 'grid';
     root.classList.add('cc-visible');
@@ -206,7 +213,9 @@
       '<div class="cc-grid">',
       '<div class="cc-card"><h3>Appearance</h3><div class="cc-row"><label for="cc-theme">Theme</label></div><select id="cc-theme">' + themeOptions + '</select><div class="cc-row"><label for="cc-accent">Accent color</label><input id="cc-accent" type="color" value="' + escapeHTML(settings.accent) + '" style="width:52px;height:34px;padding:2px"></div></div>',
       '<div class="cc-card"><h3>Keyboard</h3><p class="cc-muted">Open radial menu</p><div class="cc-row"><label for="cc-radial-key">Shortcut key</label><input id="cc-radial-key" type="text" maxlength="1" value="' + escapeHTML(settings.radialKey) + '" style="width:54px;text-align:center;text-transform:uppercase"></div><p class="cc-muted">Command search uses /</p></div>',
-      '<div class="cc-card"><h3>Comfort</h3><div class="cc-row"><label for="cc-clock-toggle">Show clock</label><input id="cc-clock-toggle" type="checkbox" ' + (settings.showClock ? 'checked' : '') + '></div><div class="cc-row"><label for="cc-focus-toggle">Enable focus mode</label><input id="cc-focus-toggle" type="checkbox" ' + (settings.focusMode ? 'checked' : '') + '></div></div>',
+      '<div class="cc-card"><h3>Comfort</h3><div class="cc-row"><label for="cc-clock-toggle">Show clock</label><input id="cc-clock-toggle" type="checkbox" ' + (settings.showClock ? 'checked' : '') + '></div><div class="cc-row"><label for="cc-focus-toggle">Enable focus mode</label><input id="cc-focus-toggle" type="checkbox" ' + (settings.focusMode ? 'checked' : '') + '></div><div class="cc-row"><label for="cc-backdrop-toggle">Dim background</label><input id="cc-backdrop-toggle" type="checkbox" ' + (settings.showBackdrop ? 'checked' : '') + '></div><div class="cc-row"><label for="cc-glow-toggle">Hover glow</label><input id="cc-glow-toggle" type="checkbox" ' + (settings.hoverGlow ? 'checked' : '') + '></div><div class="cc-row"><label for="cc-compact-toggle">Compact buttons</label><input id="cc-compact-toggle" type="checkbox" ' + (settings.compactActions ? 'checked' : '') + '></div></div>',
+      '<div class="cc-card"><h3>Radial menu</h3><label for="cc-radius">Menu radius: <strong id="cc-radius-value">' + settings.radius + 'px</strong></label><input id="cc-radius" type="range" min="100" max="280" step="5" value="' + settings.radius + '" style="width:100%"><div class="cc-row"><label for="cc-size">Button size</label><select id="cc-size"><option value="80" ' + (settings.actionScale === 80 ? 'selected' : '') + '>Small</option><option value="100" ' + (settings.actionScale === 100 ? 'selected' : '') + '>Normal</option><option value="120" ' + (settings.actionScale === 120 ? 'selected' : '') + '>Large</option></select></div><div class="cc-row"><label for="cc-center-title-input">Center title</label><input id="cc-center-title-input" type="text" maxlength="10" value="' + escapeHTML(settings.customCenterTitle || 'K12') + '" style="width:90px"></div><div class="cc-row"><label for="cc-center-sub-input">Center label</label><input id="cc-center-sub-input" type="text" maxlength="14" value="' + escapeHTML(settings.customCenterSubtitle || 'COMMAND') + '" style="width:120px"></div></div>',
+      '<div class="cc-card"><h3>Effects</h3><label for="cc-speed">Animation speed: <strong id="cc-speed-value">' + settings.animationSpeed + 'ms</strong></label><input id="cc-speed" type="range" min="0" max="600" step="20" value="' + settings.animationSpeed + '" style="width:100%"><label for="cc-blur">Backdrop blur: <strong id="cc-blur-value">' + settings.backdropBlur + 'px</strong></label><input id="cc-blur" type="range" min="0" max="20" step="1" value="' + settings.backdropBlur + '" style="width:100%"><label for="cc-opacity">Backdrop darkness: <strong id="cc-opacity-value">' + settings.backdropOpacity + '%</strong></label><input id="cc-opacity" type="range" min="0" max="90" step="5" value="' + settings.backdropOpacity + '" style="width:100%"></div>',
       '<div class="cc-card"><h3>Backup</h3><p class="cc-muted">Export or restore your local preferences.</p><div class="cc-row"><button class="cc-btn" id="cc-export">Export JSON</button><button class="cc-btn" id="cc-import">Import JSON</button></div><input id="cc-import-file" type="file" accept="application/json,.json" hidden></div>',
       '</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="cc-btn" id="cc-reset">Reset settings</button><button class="cc-btn cc-primary" id="cc-save">Save settings</button></div>'
     ].join(''), function (content) {
@@ -216,12 +225,16 @@
         settings.radialKey = (content.querySelector('#cc-radial-key').value || 'c').toLowerCase().slice(0, 1);
         settings.showClock = content.querySelector('#cc-clock-toggle').checked;
         settings.focusMode = content.querySelector('#cc-focus-toggle').checked;
+        settings.showBackdrop = content.querySelector('#cc-backdrop-toggle').checked; settings.hoverGlow = content.querySelector('#cc-glow-toggle').checked; settings.compactActions = content.querySelector('#cc-compact-toggle').checked;
+        settings.radius = Number(content.querySelector('#cc-radius').value); settings.actionScale = Number(content.querySelector('#cc-size').value); settings.animationSpeed = Number(content.querySelector('#cc-speed').value); settings.backdropBlur = Number(content.querySelector('#cc-blur').value); settings.backdropOpacity = Number(content.querySelector('#cc-opacity').value);
+        settings.customCenterTitle = content.querySelector('#cc-center-title-input').value.trim().slice(0, 10) || 'K12'; settings.customCenterSubtitle = content.querySelector('#cc-center-sub-input').value.trim().slice(0, 14) || 'COMMAND';
         saveSettings(); closeAll(); toastMessage('Settings saved');
       });
       content.querySelector('#cc-reset').addEventListener('click', function () {
         if (!confirm('Reset Command Center preferences? Your saved notes will also be cleared.')) return;
         settings = Object.assign({}, DEFAULTS); saveSettings(); closeAll(); toastMessage('Settings reset');
       });
+      [['#cc-radius','#cc-radius-value','px'],['#cc-speed','#cc-speed-value','ms'],['#cc-blur','#cc-blur-value','px'],['#cc-opacity','#cc-opacity-value','%']].forEach(function (pair) { const input = content.querySelector(pair[0]), output = content.querySelector(pair[1]); input.addEventListener('input', function () { output.textContent = input.value + pair[2]; }); });
       content.querySelector('#cc-export').addEventListener('click', exportSettings);
       content.querySelector('#cc-import').addEventListener('click', function () { content.querySelector('#cc-import-file').click(); });
       content.querySelector('#cc-import-file').addEventListener('change', async function (event) {
