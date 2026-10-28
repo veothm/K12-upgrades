@@ -4,6 +4,8 @@
 // @version      1.0.1
 // @description  A fresh Violentmonkey command center for home.k12.com: radial menu, command search, themes, focus mode, notes, shortcuts, and page tools.
 // @match        https://home.k12.com/*
+// @updateURL     https://raw.githubusercontent.com/veothm/K12-upgrades/main/K12-Command-Center.user.js
+// @downloadURL   https://raw.githubusercontent.com/veothm/K12-upgrades/main/K12-Command-Center.user.js
 // @run-at       document-idle
 // @grant        none
 // @license      MIT
